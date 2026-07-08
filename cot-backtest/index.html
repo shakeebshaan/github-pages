@@ -540,8 +540,10 @@ function renderRecap(d){
       const b=(BR.tp!==null&&r.br)?r.br[brIdx(BR.holdIdx,BR.sl,BR.tp)]:null;
       if(b) br='<span class="'+(b[1]>=0?'pos':'neg')+'">'+esc(b[0].toUpperCase())+' '+fmt(b[1])+'%</span>'+
         (b[2]?' <span class="badge" style="margin-left:4px">'+esc(b[2])+'</span>':'');
-      const peak=r.mfe>=Math.abs(r.ret)&&r.ret<0?' — was +'+fmt(r.mfe)+'% at best before reversing':'';
-      story=(r.ret>=0?'won':'lost')+' '+fmt(Math.abs(r.ret))+'% on the roll exit'+peak+
+      const open_=r.dd===DATA.dates[DATA.dates.length-1];
+      const how=open_?' — trade still open, marked at the latest close':' on the roll exit';
+      const peak=r.mfe>=Math.abs(r.ret)&&r.ret<0?' (was +'+r.mfe.toFixed(2)+'% at best before reversing)':'';
+      story=(Math.abs(r.ret)<0.005?'flat':(r.ret>=0?'won ':'lost ')+Math.abs(r.ret).toFixed(2)+'%')+how+peak+
         (r.exec_?'':' — NOT EXECUTABLE (dealer-assessed), excluded from portfolio');
     }
     return '<tr><td><span class="sw" style="background:'+color(r.mkt)+'"></span>'+esc(r.mkt)+'</td><td>'+sig+'</td><td>'+entry+'</td><td>'+exit+'</td><td>'+held+'</td><td>'+ret+'</td><td>'+mm+'</td><td>'+br+'</td><td style="max-width:340px">'+story+'</td></tr>';
