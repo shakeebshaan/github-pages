@@ -227,6 +227,7 @@ footer p{margin-top:6px;max-width:90ch}
 <section id="log">
   <h2><span class="n">07</span>Trade log — every executable trade</h2>
   <div class="controls">
+    <select id="fDate"><option value="">All reports</option></select>
     <select id="fMkt"><option value="">All markets</option></select>
     <select id="fDir"><option value="">All directions</option><option value="1">Long</option><option value="-1">Short</option></select>
     <select id="fWin"><option value="">Wins + losses</option><option value="w">Wins</option><option value="l">Losses</option></select>
@@ -685,10 +686,14 @@ renderReport();
 /* ---------- trade log ---------- */
 const fMkt=document.getElementById('fMkt');
 fMkt.innerHTML+='<option>'+EXEC.join('</option><option>')+'</option>';
+const fDate=document.getElementById('fDate');
+fDate.innerHTML+=DATA.dates.slice().reverse().map(d=>'<option>'+d+'</option>').join('');
 let sortK='dd', sortAsc=false;
 function fillLog(){
   const fm=fMkt.value, fd=document.getElementById('fDir').value, fw=document.getElementById('fWin').value;
+  const fdt=fDate.value;
   let t=execTrades.slice();
+  if(fdt)t=t.filter(r=>r.dd===fdt);
   if(fm)t=t.filter(r=>r.mkt===fm);
   if(fd)t=t.filter(r=>r.dir===+fd);
   if(fw)t=t.filter(r=>fw==='w'?r.ret>0:r.ret<=0);
@@ -717,7 +722,7 @@ function fillLog(){
 }
 document.querySelectorAll('#logTable th').forEach(th=>th.onclick=()=>{
   const k=th.dataset.k; if(sortK===k)sortAsc=!sortAsc; else{sortK=k;sortAsc=k==='dd';} fillLog();});
-['fMkt','fDir','fWin'].forEach(id=>document.getElementById(id).onchange=fillLog);
+['fDate','fMkt','fDir','fWin'].forEach(id=>document.getElementById(id).onchange=fillLog);
 fillLog();
 
 /* ---------- method ---------- */
