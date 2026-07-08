@@ -704,13 +704,13 @@ function fillLog(){
   t.sort((a,b)=>{ const ka=keyf[sortK]?keyf[sortK](a):a[sortK], kb=keyf[sortK]?keyf[sortK](b):b[sortK];
     return (ka<kb?-1:ka>kb?1:0)*(sortAsc?1:-1); });
   const _rr=DATA.tps[BR.tp]/DATA.sls[BR.sl];
-  document.getElementById('logCount').textContent=t.length+' trades · TP '+DATA.tps[BR.tp]+'% / SL '+DATA.sls[BR.sl]+'% = '+(_rr>=1?(+_rr.toFixed(1))+' : 1':'1 : '+(+(1/_rr).toFixed(1)))+' R:R · '+DATA.holds[BR.holdIdx]+' bars (pick in the lab above)';
+  document.getElementById('logCount').textContent=t.length+' trades · TP '+DATA.tps[BR.tp]+'% / SL '+DATA.sls[BR.sl]+'% = '+(_rr>=1?(+_rr.toFixed(1))+' : 1':'1 : '+(+(1/_rr).toFixed(1)))+' R:R · '+DATA.holds[BR.holdIdx]+' bars · click a trade for every R:R outcome';
   const px=v=>v.toLocaleString(undefined,{maximumFractionDigits:2});
   const tb=document.querySelector('#logTable tbody');
-  tb.innerHTML=t.map(r=>{
+  tb.innerHTML=t.map((r,i)=>{
     const fb=(BR.tp!==null&&r.br)?r.br[brIdx(BR.holdIdx,BR.sl,BR.tp)]:null;
     const b=fb?fb[1]:null;
-    return '<tr><td>'+r.dd+'</td><td>'+r.rel+'</td><td>'+esc(r.mkt)+'</td>'+
+    return '<tr data-i="'+i+'" style="cursor:pointer"><td>'+r.dd+'</td><td>'+r.rel+'</td><td>'+esc(r.mkt)+'</td>'+
     '<td>'+(r.dir>0?'<span class="dirtag L">L</span>':'<span class="dirtag S">S</span>')+'</td>'+
     '<td>'+fmt(r.comp,1)+'</td><td>'+r.long_w+'/'+(100-r.long_w)+'</td>'+
     '<td>'+r.ed+'</td><td>'+r.entry.toLocaleString()+'</td><td>'+r.xd+'</td><td>'+r.exit.toLocaleString()+'</td>'+
@@ -722,6 +722,31 @@ function fillLog(){
     (b===null?'—':fmt(b)+(fb[2]==='1h'?' ¹ʰ':''))+'</td>'+
     '<td class="'+(b===null?'':(b>=0?'pos':'neg'))+'">'+(b===null?'—':fmt(b/DATA.sls[BR.sl],2)+'R')+'</td></tr>';
   }).join('');
+  tb.onclick=ev=>{
+    const tr=ev.target.closest('tr[data-i]'); if(!tr)return;
+    const nxt=tr.nextElementSibling;
+    if(nxt&&nxt.classList.contains('brdet')){ nxt.remove(); return; }
+    tb.querySelectorAll('.brdet').forEach(x=>x.remove());
+    tr.insertAdjacentHTML('afterend', brDetail(t[+tr.dataset.i]));
+  };
+}
+function brDetail(r){
+  if(!r.br) return '';
+  const combos=[];
+  for(let s=0;s<DATA.sls.length;s++)for(let tt=0;tt<DATA.tps.length;tt++){
+    combos.push({ratio:DATA.tps[tt]/DATA.sls[s],tp:DATA.tps[tt],sl:DATA.sls[s],
+                 b:r.br[brIdx(BR.holdIdx,s,tt)]});
+  }
+  combos.sort((a,b)=>b.ratio-a.ratio||a.sl-b.sl);
+  const rr=x=>x>=1?(+x.toFixed(1))+' : 1':'1 : '+(+(1/x).toFixed(1));
+  return '<tr class="brdet"><td colspan="17" style="background:var(--mid);white-space:normal">'+
+    '<div style="font-size:12px;color:var(--ink2);margin:4px 2px"><b>'+esc(r.mkt)+' '+r.dd+
+    '</b> — every R:R at the '+DATA.holds[BR.holdIdx]+'-bar stop (entry '+r.entry.toLocaleString()+'):</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:3px 18px;padding:2px 2px 8px;font-size:12px">'+
+    combos.map(c=>'<div><b>'+rr(c.ratio)+'</b> <span style="color:var(--muted)">(TP '+c.tp+'% / SL '+c.sl+'%)</span> '+
+      '<span class="'+(c.b[1]>=0?'pos':'neg')+'">'+esc(c.b[0].toUpperCase())+' '+fmt(c.b[1])+'% · '+fmt(c.b[1]/c.sl,2)+'R</span>'+
+      (c.b[3]?'<br><span style="color:var(--muted)">'+esc(c.b[3])+'</span>':'')+'</div>').join('')+
+    '</div></td></tr>';
 }
 document.querySelectorAll('#logTable th').forEach(th=>th.onclick=()=>{
   const k=th.dataset.k; if(sortK===k)sortAsc=!sortAsc; else{sortK=k;sortAsc=k==='dd';} fillLog();});
