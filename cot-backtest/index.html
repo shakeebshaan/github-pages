@@ -241,7 +241,7 @@ footer p{margin-top:6px;max-width:90ch}
         <th data-k="ed">Entry date</th><th data-k="entry">Entry px</th>
         <th data-k="xd">Exit date</th><th data-k="exit">Exit px</th>
         <th data-k="ret">Ret %</th><th data-k="mfe">MFE %</th><th data-k="mae">MAE %</th>
-        <th data-k="tppx">TP px</th><th data-k="slpx">SL px</th><th data-k="brv">Bracket</th>
+        <th data-k="tppx">TP px</th><th data-k="slpx">SL px</th><th data-k="brv">Bracket</th><th data-k="rmult">R mult</th>
       </tr></thead>
       <tbody></tbody>
     </table>
@@ -553,7 +553,7 @@ function renderReport(){
         (brRow?
           '<span class="k">TP level</span><span class="v">'+tpPx.toLocaleString(undefined,{maximumFractionDigits:2})+' ('+fmt(r.dir*DATA.tps[BR.tp],0)+'%)</span>'+
           '<span class="k">SL level</span><span class="v">'+slPx.toLocaleString(undefined,{maximumFractionDigits:2})+' ('+fmt(-r.dir*DATA.sls[BR.sl],0)+'%)</span>'+
-          '<span class="k">Bracket outcome</span><span class="v '+(brRow[1]>=0?'pos':'neg')+'">'+esc(brRow[0].toUpperCase())+' '+fmt(brRow[1])+'%</span>'+
+          '<span class="k">Bracket outcome</span><span class="v '+(brRow[1]>=0?'pos':'neg')+'">'+esc(brRow[0].toUpperCase())+' '+fmt(brRow[1])+'% ('+fmt(brRow[1]/DATA.sls[BR.sl],2)+'R)</span>'+
           (brRow[3]?'<span class="k">Bracket fill time</span><span class="v">'+esc(brRow[3])+' <span class="badge">'+esc(brRow[2]||'')+'</span></span>':'')
         :'')+
         '</div>';
@@ -658,7 +658,7 @@ function renderRecap(d){
       ret='<span class="'+(r.ret>=0?'pos':'neg')+'">'+fmt(r.ret)+'%</span>';
       mm=fmt(r.mfe)+'% / −'+Math.abs(r.mae).toFixed(2)+'%';
       const b=(BR.tp!==null&&r.br)?r.br[brIdx(BR.holdIdx,BR.sl,BR.tp)]:null;
-      if(b) br='<span class="'+(b[1]>=0?'pos':'neg')+'">'+esc(b[0].toUpperCase())+' '+fmt(b[1])+'%</span>'+
+      if(b) br='<span class="'+(b[1]>=0?'pos':'neg')+'">'+esc(b[0].toUpperCase())+' '+fmt(b[1])+'% ('+fmt(b[1]/DATA.sls[BR.sl],2)+'R)</span>'+
         (b[2]?' <span class="badge" style="margin-left:4px">'+esc(b[2])+'</span>':'')+
         (b[3]?'<br><span style="color:var(--muted);font-size:11.5px">'+esc(b[3])+'</span>':'');
       const open_=r.dd===DATA.dates[DATA.dates.length-1];
@@ -699,10 +699,12 @@ function fillLog(){
   if(fw)t=t.filter(r=>fw==='w'?r.ret>0:r.ret<=0);
   const brv=r=>(BR.tp!==null&&r.br)?r.br[brIdx(BR.holdIdx,BR.sl,BR.tp)][1]:null;
   const tppx=r=>r.entry*(1+r.dir*DATA.tps[BR.tp]/100), slpx=r=>r.entry*(1-r.dir*DATA.sls[BR.sl]/100);
-  const keyf={brv, tppx, slpx};
+  const rmult=r=>{const v=brv(r); return v===null?null:v/DATA.sls[BR.sl];};
+  const keyf={brv, tppx, slpx, rmult};
   t.sort((a,b)=>{ const ka=keyf[sortK]?keyf[sortK](a):a[sortK], kb=keyf[sortK]?keyf[sortK](b):b[sortK];
     return (ka<kb?-1:ka>kb?1:0)*(sortAsc?1:-1); });
-  document.getElementById('logCount').textContent=t.length+' trades · TP/SL/bracket cols = TP '+DATA.tps[BR.tp]+'% / SL '+DATA.sls[BR.sl]+'% / '+DATA.holds[BR.holdIdx]+' bars (pick in the lab above)';
+  const _rr=DATA.tps[BR.tp]/DATA.sls[BR.sl];
+  document.getElementById('logCount').textContent=t.length+' trades · TP '+DATA.tps[BR.tp]+'% / SL '+DATA.sls[BR.sl]+'% = '+(_rr>=1?(+_rr.toFixed(1))+' : 1':'1 : '+(+(1/_rr).toFixed(1)))+' R:R · '+DATA.holds[BR.holdIdx]+' bars (pick in the lab above)';
   const px=v=>v.toLocaleString(undefined,{maximumFractionDigits:2});
   const tb=document.querySelector('#logTable tbody');
   tb.innerHTML=t.map(r=>{
@@ -717,7 +719,8 @@ function fillLog(){
     '<td>'+px(tppx(r))+' <span style="color:var(--muted)">('+fmt(r.dir*DATA.tps[BR.tp],0)+'%)</span></td>'+
     '<td>'+px(slpx(r))+' <span style="color:var(--muted)">('+fmt(-r.dir*DATA.sls[BR.sl],0)+'%)</span></td>'+
     '<td class="'+(b===null?'':(b>=0?'pos':'neg'))+'" title="'+(fb&&fb[3]?'fill: '+esc(fb[3]):'')+'">'+
-    (b===null?'—':fmt(b)+(fb[2]==='1h'?' ¹ʰ':''))+'</td></tr>';
+    (b===null?'—':fmt(b)+(fb[2]==='1h'?' ¹ʰ':''))+'</td>'+
+    '<td class="'+(b===null?'':(b>=0?'pos':'neg'))+'">'+(b===null?'—':fmt(b/DATA.sls[BR.sl],2)+'R')+'</td></tr>';
   }).join('');
 }
 document.querySelectorAll('#logTable th').forEach(th=>th.onclick=()=>{
