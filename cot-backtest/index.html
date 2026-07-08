@@ -785,6 +785,21 @@ function fillLog(){
     'TP '+DATA.tps[BR.tp]+'% / SL '+DATA.sls[BR.sl]+'% = '+(_rr>=1?(+_rr.toFixed(1))+' : 1':'1 : '+(+(1/_rr).toFixed(1)))+' R:R · '+DATA.holds[BR.holdIdx]+' bars · click a trade for every R:R outcome';
   const px=v=>v.toLocaleString(undefined,{maximumFractionDigits:2});
   const tb=document.querySelector('#logTable tbody');
+  if(!t.length){
+    // silent no-trade is a bug pattern (BACKTEST-INTEGRITY L16): name the reason
+    let why='No executable trades match these filters.';
+    const cand=rows.filter(r=>(!fdt||r.dd===fdt)&&(!fm||r.mkt===fm));
+    if(cand.length){
+      const r=cand[0];
+      if(r.skip) why=esc(r.mkt)+' '+r.dd+': '+esc(r.skip)+'.';
+      else if(r.dir===0) why=esc(r.mkt)+' '+r.dd+': mechanical composite 0.0 → <b>abstained</b> (the backtest trades the mechanical signal'+
+        (r.pub&&r.pub.comp!==r.comp?'; the published lean '+fmt(r.pub.comp,1)+' → Long '+r.pub.L+' / Short '+(100-r.pub.L)+' uses judgment Trend/Tape/Flow, which exist only for the documented override weeks and are never traded by the engine':'')+').';
+      else if(fw) why='Trades exist but none match the win/loss filter.';
+      else if(fd) why='Trades exist but none match the direction filter.';
+    }
+    tb.innerHTML='<tr><td colspan="18" style="color:var(--ink2);white-space:normal;padding:14px">'+why+'</td></tr>';
+    return;
+  }
   tb.innerHTML=t.map((r,i)=>{
     const fb=(BR.tp!==null&&r.br)?r.br[brIdx(BR.holdIdx,BR.sl,BR.tp)]:null;
     const b=fb?fb[1]:null;
