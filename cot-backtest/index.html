@@ -169,6 +169,25 @@ footer p{margin-top:6px;max-width:90ch}
     <span id="relNote" style="font-size:12.5px;color:var(--muted)"></span>
   </div>
   <div class="cards7" id="repCards"></div>
+
+  <h3 style="margin-top:28px;font-size:15px;font-weight:650">Full universe — every market in this report</h3>
+  <p class="note">All markets in the weekly CFTC Disaggregated file (energy, ags, softs, power,
+  gas basis, env credits…), scored by the same mechanical rules. Sorted most-short → most-long.
+  ENV = structurally excluded env-credit market (§5); MM0 = zero managed-money book;
+  FLOW-NA = market absent from prior report. Published column appears on override weeks.</p>
+  <div class="controls">
+    <input type="search" id="uniSearch" placeholder="Filter markets — try butane, gas, wheat, soybean…" style="min-width:280px">
+    <span id="uniCount" style="font-size:12.5px;color:var(--muted)"></span>
+  </div>
+  <div class="tscroll" style="max-height:520px;overflow-y:auto">
+    <table id="uniTable">
+      <thead><tr>
+        <th>Market</th><th>OI</th><th>MM %OI</th><th>Comm Δ%</th>
+        <th>P</th><th>F</th><th>Comp</th><th>Lean</th><th>Published</th><th>Flags</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </section>
 
 <section id="recap">
@@ -504,7 +523,47 @@ function renderReport(){
       '<span class="k">Comm Δnet</span><span class="v">'+r.comm.toLocaleString()+' ('+fmt(r.comm_pct,2)+'%)</span></div>'+trade+'</div>';
   }).join('');
   renderRecap(d);
+  renderUniverse(d);
 }
+
+/* ---------- full-universe table (lazy per-week fetch) ---------- */
+const weekCache = {};
+async function renderUniverse(d){
+  const tb=document.querySelector('#uniTable tbody');
+  if(!weekCache[d]){
+    tb.innerHTML='<tr><td colspan="10" style="color:var(--muted)">loading…</td></tr>';
+    try{
+      const resp=await fetch('weeks/'+d+'.json');
+      if(!resp.ok) throw new Error(resp.status);
+      weekCache[d]=await resp.json();
+    }catch(e){
+      tb.innerHTML='<tr><td colspan="10" style="color:var(--muted)">Universe data unavailable '+
+        '(weeks/'+esc(d)+'.json — requires the hosted deployment).</td></tr>';
+      document.getElementById('uniCount').textContent='';
+      return;
+    }
+  }
+  if(dsel.value===d) fillUniverse(d);
+}
+function fillUniverse(d){
+  const q=(document.getElementById('uniSearch').value||'').toLowerCase();
+  const all=weekCache[d]?weekCache[d].rows:null;
+  if(!all) return;
+  const rows=all.filter(u=>u.n.toLowerCase().includes(q));
+  document.getElementById('uniCount').textContent=rows.length+' of '+all.length+' markets · report '+d;
+  const lean=u=>u.co===0?'<span class="dirtag A">50/50</span>':
+    u.co>0?'<span class="dirtag L">L '+u.L+'/'+(100-u.L)+'</span>':
+    '<span class="dirtag S">S '+(100-u.L)+'/'+u.L+'</span>';
+  document.querySelector('#uniTable tbody').innerHTML=rows.map(u=>
+    '<tr><td style="white-space:normal;min-width:220px">'+esc(u.n)+'</td>'+
+    '<td>'+u.oi.toLocaleString()+'</td><td>'+fmt(u.mp,1)+'</td><td>'+fmt(u.cp,2)+'</td>'+
+    '<td>'+fmt(u.P,0)+'</td><td>'+fmt(u.F,0)+'</td>'+
+    '<td class="'+(u.co>0?'pos':u.co<0?'neg':'')+'">'+fmt(u.co,1)+'</td>'+
+    '<td>'+lean(u)+'</td>'+
+    '<td>'+(u.pub?'<b>'+fmt(u.pub.co,1)+'</b> → '+(u.pub.co>0?'L '+u.pub.L:u.pub.co<0?'S '+(100-u.pub.L):'50/50')+' <span class="badge" style="margin-left:4px">'+esc(u.pub.conf)+'</span>':'—')+'</td>'+
+    '<td style="color:var(--muted)">'+esc(u.fl||'')+'</td></tr>').join('');
+}
+document.getElementById('uniSearch').addEventListener('input',()=>fillUniverse(dsel.value));
 
 /* ---------- week recap: what this report's trades did ---------- */
 function weekLegs(d){ return rows.filter(r=>r.dd===d && r.exec_ && r.dir!==0 && r.ret!=null); }
