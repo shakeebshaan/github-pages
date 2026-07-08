@@ -793,7 +793,7 @@ function fillLog(){
       const r=cand[0];
       if(r.skip) why=esc(r.mkt)+' '+r.dd+': '+esc(r.skip)+'.';
       else if(r.dir===0) why=esc(r.mkt)+' '+r.dd+': mechanical composite 0.0 → <b>abstained</b> (the backtest trades the mechanical signal'+
-        (r.pub&&r.pub.comp!==r.comp?'; the published lean '+fmt(r.pub.comp,1)+' → Long '+r.pub.L+' / Short '+(100-r.pub.L)+' uses judgment Trend/Tape/Flow, which exist only for the documented override weeks and are never traded by the engine':'')+').';
+        (r.pub&&r.pub.comp!==r.comp?'; the published lean '+fmt(r.pub.comp,1)+' → Long '+r.pub.long+' / Short '+(100-r.pub.long)+' uses judgment Trend/Tape/Flow, which exist only for the documented override weeks and are never traded by the engine':'')+').';
       else if(fw) why='Trades exist but none match the win/loss filter.';
       else if(fd) why='Trades exist but none match the direction filter.';
     }
