@@ -152,6 +152,21 @@ footer p{margin-top:6px;max-width:90ch}
     </div>
     <div id="brMatrix"></div>
     <div class="tiles" id="brTiles"></div>
+
+    <h3 style="margin-top:26px;font-size:15px;font-weight:650">R:R view — same brackets, organized by reward-to-risk</h3>
+    <p class="note">Every TP×SL pair expressed as a reward:risk ratio, at the time stop chosen above,
+    for the market selected above. Entry is always the first session open after release.
+    <b>Exp (R)</b> = average return per trade divided by the risk (SL%) — expectancy in R-multiples;
+    positive means the bracket made more than one risk unit per trade on average. Click a row to load it everywhere.</p>
+    <div class="tscroll">
+      <table id="rrTable">
+        <thead><tr>
+          <th>R:R</th><th>TP %</th><th>SL %</th><th>TP hit</th><th>SL hit</th><th>Time exit</th>
+          <th>Win rate</th><th>Avg ret/trade</th><th>Exp (R)</th><th>Total ret</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 </section>
 
@@ -458,6 +473,31 @@ function drawBracket(){
       tile('SL hit', st.sl.toFixed(1)+'%','','of trades')+
       tile('Time exit', st.tm.toFixed(1)+'%','','neither level touched');
   }
+  drawRR();
+}
+function drawRR(){
+  const combos=[];
+  for(let s=0;s<DATA.sls.length;s++) for(let t=0;t<DATA.tps.length;t++){
+    const st=brStats(BR.holdIdx,s,t);
+    combos.push({t,s,ratio:DATA.tps[t]/DATA.sls[s],st});
+  }
+  combos.sort((a,b)=>b.ratio-a.ratio || DATA.sls[a.s]-DATA.sls[b.s]);
+  const rr=x=>x>=1?(Number.isInteger(x)?x:x.toFixed(1))+' : 1':'1 : '+(Number.isInteger(1/x)?1/x:(1/x).toFixed(1));
+  document.querySelector('#rrTable tbody').innerHTML=combos.map(c=>{
+    const sel=(BR.sl===c.s&&BR.tp===c.t);
+    const expR=c.st.avg/DATA.sls[c.s];
+    return '<tr style="cursor:pointer'+(sel?';outline:2px solid var(--ink);outline-offset:-2px':'')+'" data-s="'+c.s+'" data-t="'+c.t+'">'+
+      '<td><b>'+rr(c.ratio)+'</b></td><td>+'+DATA.tps[c.t]+'</td><td>−'+DATA.sls[c.s]+'</td>'+
+      '<td>'+c.st.tp.toFixed(1)+'%</td><td>'+c.st.sl.toFixed(1)+'%</td><td>'+c.st.tm.toFixed(1)+'%</td>'+
+      '<td>'+c.st.win.toFixed(1)+'%</td>'+
+      '<td class="'+(c.st.avg>=0?'pos':'neg')+'">'+fmt(c.st.avg,3)+'%</td>'+
+      '<td class="'+(expR>=0?'pos':'neg')+'">'+fmt(expR,3)+'</td>'+
+      '<td class="'+(c.st.tot>=0?'pos':'neg')+'">'+fmt(c.st.tot,1)+'%</td></tr>';
+  }).join('');
+  document.querySelectorAll('#rrTable tbody tr').forEach(tr=>tr.onclick=()=>{
+    BR.sl=+tr.dataset.s; BR.tp=+tr.dataset.t;
+    drawBracket(); renderReport(); fillLog();
+  });
 }
 const brSel=document.getElementById('brMkt');
 brSel.innerHTML='<option value="">All executable markets</option>'+EXEC.map(m=>'<option>'+m+'</option>').join('');
