@@ -73,6 +73,7 @@ th{color:var(--ink2);font-weight:600;text-align:left;padding:8px 10px;border-bot
 td{padding:7px 10px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums;white-space:nowrap}
 tr:hover td{background:var(--mid)}
 .tscroll{overflow-x:auto;border:1px solid var(--ring);border-radius:12px;background:var(--surface)}
+.tscroll thead th{position:sticky;top:0;background:var(--surface);z-index:2}
 .pos{color:var(--goodtext);font-weight:550}.neg{color:var(--crit);font-weight:550}
 .dirtag{font-size:11px;font-weight:650;letter-spacing:.04em;border-radius:6px;padding:2px 7px}
 .dirtag.L{background:color-mix(in srgb,var(--pos) 14%,transparent);color:var(--pos)}
@@ -176,6 +177,9 @@ footer p{margin-top:6px;max-width:90ch}
   ENV = structurally excluded env-credit market (§5); MM0 = zero managed-money book;
   FLOW-NA = market absent from prior report. Published column appears on override weeks.</p>
   <div class="controls">
+    <button class="btn" id="uniPrev">← prev</button>
+    <select id="uniDate"></select>
+    <button class="btn" id="uniNext">next →</button>
     <input type="search" id="uniSearch" placeholder="Filter markets — try butane, gas, wheat, soybean…" style="min-width:280px">
     <span id="uniCount" style="font-size:12.5px;color:var(--muted)"></span>
   </div>
@@ -529,6 +533,8 @@ function renderReport(){
 /* ---------- full-universe table (lazy per-week fetch) ---------- */
 const weekCache = {};
 async function renderUniverse(d){
+  const ud=document.getElementById('uniDate');
+  if(ud && ud.options.length) ud.value=d;   // follow the browser's selector
   const tb=document.querySelector('#uniTable tbody');
   if(!weekCache[d]){
     tb.innerHTML='<tr><td colspan="10" style="color:var(--muted)">loading…</td></tr>';
@@ -564,6 +570,15 @@ function fillUniverse(d){
     '<td style="color:var(--muted)">'+esc(u.fl||'')+'</td></tr>').join('');
 }
 document.getElementById('uniSearch').addEventListener('input',()=>fillUniverse(dsel.value));
+
+/* universe date selector — synced both ways with the browser's selector */
+const uniDate=document.getElementById('uniDate');
+uniDate.innerHTML=DATA.dates.map(d=>'<option>'+d+'</option>').join('');
+function setReportDate(d){ dsel.value=d; uniDate.value=d; renderReport(); }
+uniDate.onchange=()=>setReportDate(uniDate.value);
+document.getElementById('uniPrev').onclick=()=>{const i=DATA.dates.indexOf(uniDate.value); if(i>0)setReportDate(DATA.dates[i-1]);};
+document.getElementById('uniNext').onclick=()=>{const i=DATA.dates.indexOf(uniDate.value); if(i<DATA.dates.length-1)setReportDate(DATA.dates[i+1]);};
+uniDate.value=dsel.value;
 
 /* ---------- week recap: what this report's trades did ---------- */
 function weekLegs(d){ return rows.filter(r=>r.dd===d && r.exec_ && r.dir!==0 && r.ret!=null); }
