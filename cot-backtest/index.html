@@ -236,6 +236,7 @@ footer p{margin-top:6px;max-width:90ch}
   <div class="tscroll" style="max-height:560px;overflow-y:auto">
     <table id="logTable">
       <thead><tr>
+        <th style="cursor:default">All R:R</th>
         <th data-k="dd">Report</th><th data-k="rel">Released</th><th data-k="mkt">Market</th>
         <th data-k="dir">Dir</th><th data-k="comp">Comp</th><th data-k="long_w">L/S wt</th>
         <th data-k="ed">Entry date</th><th data-k="entry">Entry px</th>
@@ -710,7 +711,7 @@ function fillLog(){
   tb.innerHTML=t.map((r,i)=>{
     const fb=(BR.tp!==null&&r.br)?r.br[brIdx(BR.holdIdx,BR.sl,BR.tp)]:null;
     const b=fb?fb[1]:null;
-    return '<tr data-i="'+i+'" style="cursor:pointer"><td>'+r.dd+'</td><td>'+r.rel+'</td><td>'+esc(r.mkt)+'</td>'+
+    return '<tr data-i="'+i+'" style="cursor:pointer"><td class="rrbtn" style="color:var(--pos);font-weight:650;white-space:nowrap">▸ R:R</td><td>'+r.dd+'</td><td>'+r.rel+'</td><td>'+esc(r.mkt)+'</td>'+
     '<td>'+(r.dir>0?'<span class="dirtag L">L</span>':'<span class="dirtag S">S</span>')+'</td>'+
     '<td>'+fmt(r.comp,1)+'</td><td>'+r.long_w+'/'+(100-r.long_w)+'</td>'+
     '<td>'+r.ed+'</td><td>'+r.entry.toLocaleString()+'</td><td>'+r.xd+'</td><td>'+r.exit.toLocaleString()+'</td>'+
@@ -724,10 +725,13 @@ function fillLog(){
   }).join('');
   tb.onclick=ev=>{
     const tr=ev.target.closest('tr[data-i]'); if(!tr)return;
+    const btn=tr.querySelector('.rrbtn');
     const nxt=tr.nextElementSibling;
-    if(nxt&&nxt.classList.contains('brdet')){ nxt.remove(); return; }
+    if(nxt&&nxt.classList.contains('brdet')){ nxt.remove(); if(btn)btn.textContent='▸ R:R'; return; }
     tb.querySelectorAll('.brdet').forEach(x=>x.remove());
+    tb.querySelectorAll('.rrbtn').forEach(x=>x.textContent='▸ R:R');
     tr.insertAdjacentHTML('afterend', brDetail(t[+tr.dataset.i]));
+    if(btn)btn.textContent='▾ R:R';
   };
 }
 function brDetail(r){
@@ -739,7 +743,7 @@ function brDetail(r){
   }
   combos.sort((a,b)=>b.ratio-a.ratio||a.sl-b.sl);
   const rr=x=>x>=1?(+x.toFixed(1))+' : 1':'1 : '+(+(1/x).toFixed(1));
-  return '<tr class="brdet"><td colspan="17" style="background:var(--mid);white-space:normal">'+
+  return '<tr class="brdet"><td colspan="18" style="background:var(--mid);white-space:normal">'+
     '<div style="font-size:12px;color:var(--ink2);margin:4px 2px"><b>'+esc(r.mkt)+' '+r.dd+
     '</b> — every R:R at the '+DATA.holds[BR.holdIdx]+'-bar stop (entry '+r.entry.toLocaleString()+'):</div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:3px 18px;padding:2px 2px 8px;font-size:12px">'+
