@@ -81,7 +81,7 @@ footer p{margin-top:6px;max-width:92ch}
 <nav class="toc">
   <a href="#overview">Overview</a><a href="#nowcast">Current estimate</a>
   <a href="#chart">Estimate vs official</a><a href="#weekly">Week by week</a><a href="#butterfly">Weights ⟷</a><a href="#scorecard">Scorecard</a>
-  <a href="#holdout">Holdout example</a><a href="#method">Method</a>
+  <a href="#holdout">Holdout example</a><a href="#research">Research</a><a href="#method">Method</a>
   <a href="../cot-backtest/">Backtest ↗</a>
   <button id="themeBtn">◐ theme</button>
 </nav>
@@ -181,8 +181,27 @@ footer p{margin-top:6px;max-width:92ch}
   </tr></thead><tbody></tbody></table></div>
 </section>
 
+<section id="research">
+  <h2><span class="n">06</span>Research notes — improvement queue (2026-07-10)</h2>
+  <div class="card" style="font-size:13.5px;color:var(--ink2);line-height:1.7">
+  <p><b>Nowcast accuracy.</b> Three independent CTA-replication studies (SSRN 3674828; Invest
+  Resolve trend-replication whitepaper; arXiv 2507.15876) recover 75–86% of trend-follower
+  behavior from price alone — with ~98% of fitted weight on momentum lookbacks of
+  <b>90+ trading days</b> (up to 500d). This model's features currently top out at 60 days;
+  adding vol-normalized 90/120/180/260-day momentum z-scores is the top queued upgrade,
+  ahead of the paid daily-OI backfill (Databento CME history starts 2010, usage-priced).</p>
+  <p><b>Signal construction.</b> A factor-decomposition backtest over the full 2009→2026 trade
+  engine (see the <a href="../cot-backtest/#decomp" style="color:var(--pos)">Factor lab</a> on the
+  backtest page) found the composite's contrarian raw-positioning factor loses money standalone
+  (−0.32 net Sharpe), consistent with Kang–Rouwenhorst–Tang (<i>J. Finance</i> 2020): positioning
+  <i>levels</i> don't predict, positioning <i>percentiles and flows</i> do. A candidate replacement
+  (52w-smoothed hedging pressure + 156w MM percentile) is positive net of costs in 18/18 parameter
+  combos and with palladium excluded — now a shadow candidate, not the live signal.</p>
+  </div>
+</section>
+
 <section id="method">
-  <h2><span class="n">06</span>Method & guardrails</h2>
+  <h2><span class="n">07</span>Method & guardrails</h2>
   <div class="card" style="font-size:13.5px;color:var(--ink2);line-height:1.7" id="mCard"></div>
 </section>
 
