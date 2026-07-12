@@ -68,6 +68,19 @@ tfoot .wkcum td{color:var(--muted);font-size:11px;border-bottom:none;padding-top
 .out.tp{background:var(--pos)}.out.sl{background:var(--neg)}.out.time{background:var(--axis)}
 .empty{color:var(--muted);font-style:italic;padding:8px 0;font-size:12.5px}
 .foot{color:var(--muted);font-size:12px;margin-top:20px}
+details.wtbl{background:var(--card);border:1px solid var(--grid);border-radius:12px;
+  margin-bottom:18px;overflow:hidden}
+details.wtbl summary{cursor:pointer;padding:11px 15px;font-weight:650;font-size:13.5px;
+  list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.wtbl summary::-webkit-details-marker{display:none}
+details.wtbl summary .hint{color:var(--muted);font-weight:400;font-size:12px}
+details.wtbl[open] summary{border-bottom:1px solid var(--grid)}
+.wtblbox{max-height:560px;overflow:auto}
+.wtblbox table{font-size:12px}
+.wtblbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.wtblbox th.grp{text-align:center;border-left:1px solid var(--grid)}
+.wtblbox td.grp{border-left:1px solid var(--grid)}
+.wtblbox td:first-child,.wtblbox th:first-child{padding-left:15px}
 @media(max-width:760px){.wkgrid{grid-template-columns:1fr}.side:first-child{border-right:none;border-bottom:1px solid var(--grid)}}
 </style></head>
 <body><div class="wrap">
@@ -107,6 +120,8 @@ despite an 85% win rate.</p>
   <span id="cnt" class="ctl"></span>
 </div>
 <div class="tiles" id="tiles"></div>
+<details class="wtbl"><summary>Week-by-week table<span class="hint">wk / cumulative / drawdown per side · follows the bracket &amp; year selected above</span></summary>
+<div class="wtblbox"><div id="wtbl"></div></div></details>
 <div id="weeks"></div>
 <p class="foot" id="foot"></p>
 </div>
@@ -167,10 +182,12 @@ function render(){
   // (year-to-date when a year is picked; from inception when "All years")
   const asc=DATA.weeks.filter(w=>!y||w.date.slice(0,4)===y).slice().reverse()
     .map(w=>({date:w.date, rel:w.rel, f:w.f.map(view), o:w.o.map(view)}));
-  let fcum=0,ocum=0,ftot=0,otot=0,fn=0,on=0,fwin=0,owin=0;
+  let fcum=0,ocum=0,ftot=0,otot=0,fn=0,on=0,fwin=0,owin=0,fpk=0,opk=0;
   asc.forEach(w=>{
     const fp=w.f.reduce((a,t)=>a+t.pnl,0), op=w.o.reduce((a,t)=>a+t.pnl,0);
     fcum+=fp; ocum+=op; w._fp=fp; w._op=op; w._fcum=fcum; w._ocum=ocum;
+    fpk=Math.max(fpk,fcum); opk=Math.max(opk,ocum);
+    w._fdd=fpk-fcum; w._odd=opk-ocum;
     w.f.forEach(t=>{ftot+=t.pnl;fn++;if(t.pnl>0)fwin++;});
     w.o.forEach(t=>{otot+=t.pnl;on++;if(t.pnl>0)owin++;});
   });
@@ -186,6 +203,17 @@ function render(){
   ].map(([l,v,c,d])=>'<div class="tile"><div class="lb">'+l+'</div><div class="v '+(c||'')+'">'+v+'</div><div class="d">'+d+'</div></div>').join('');
   $('cnt').textContent=asc.length+' weeks shown'+(y?' · cumulative is year-to-date within '+y
     :' · cumulative from '+DATA.totals.years[0]);
+  // flat week-by-week table, newest first (same scoping as the cards)
+  const cell=(v,d)=>'<td class="'+(v>=0?'up':'dn')+'">'+fmt(v,d)+'</td>';
+  $('wtbl').innerHTML='<table><thead><tr><th>Week</th><th>Released</th>'+
+    '<th class="grp">Off N</th><th>Off wk%</th><th>Off cum%</th><th>Off DD%</th>'+
+    '<th class="grp">Fc N</th><th>Fc wk%</th><th>Fc cum%</th><th>Fc DD%</th></tr></thead><tbody>'+
+    asc.slice().reverse().map(w=>'<tr><td>'+esc(w.date)+'</td><td>'+esc(w.rel||'—')+'</td>'+
+      '<td class="grp">'+w.o.length+'</td>'+cell(w._op,2)+cell(w._ocum,1)+
+        '<td class="'+(w._odd>0?'dn':'')+'">'+w._odd.toFixed(1)+'</td>'+
+      '<td class="grp">'+w.f.length+'</td>'+cell(w._fp,2)+cell(w._fcum,1)+
+        '<td class="'+(w._fdd>0?'dn':'')+'">'+w._fdd.toFixed(1)+'</td></tr>').join('')+
+    '</tbody></table>';
   // newest week on top, using the scoped running cumulative
   $('weeks').innerHTML=asc.slice().reverse().map(w=>{
     const net=w._fp+w._op, cls=net>=0?'pos':'neg';
