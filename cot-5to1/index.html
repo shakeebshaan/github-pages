@@ -57,7 +57,9 @@ th{text-align:right;color:var(--muted);font-weight:550;padding:4px 6px;
 th:first-child,td:first-child{text-align:left}
 td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--grid);
   font-variant-numeric:tabular-nums;white-space:nowrap}
-tr:last-child td{border-bottom:none}
+tbody tr:last-child td{border-bottom:1px solid var(--grid)}
+tfoot .wktot td{font-weight:700;border-top:2px solid var(--axis);border-bottom:none;padding-top:6px}
+tfoot .wkcum td{color:var(--muted);font-size:11px;border-bottom:none;padding-top:1px}
 .dir{font-weight:700;font-size:11px;padding:1px 5px;border-radius:4px}
 .dir.L{color:var(--pos);background:color-mix(in srgb,var(--pos) 16%,transparent)}
 .dir.S{color:var(--neg);background:color-mix(in srgb,var(--neg) 16%,transparent)}
@@ -107,46 +109,63 @@ $('hbr').textContent=DATA.bracket;
   set(t|| (matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
   $('themeBtn').onclick=()=>set(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');})();
 
-const T=DATA.totals;
-$('tiles').innerHTML=[
-  ['Forecast cumulative', fmt(T.fcast_pnl,1)+'%', T.fcast_pnl>=0?'up':'dn', money(T.fcast_pnl*1000)+' / $100k · '+T.fcast_n+' trades'],
-  ['Official cumulative', fmt(T.off_pnl,1)+'%', T.off_pnl>=0?'up':'dn', money(T.off_pnl*1000)+' / $100k · '+T.off_n+' trades'],
-  ['Forecast − Official', fmt(T.fcast_pnl-T.off_pnl,1)+'%', (T.fcast_pnl-T.off_pnl)>=0?'up':'dn', 'predicted vs report signal'],
-  ['Forecast win rate', T.fcast_win+'%','', 'of '+T.fcast_n+' trades'],
-  ['Official win rate', T.off_win+'%','', 'of '+T.off_n+' trades'],
-  ['Weeks', T.n_weeks,'', 'report weeks with ≥1 trade'],
-].map(([l,v,c,d])=>'<div class="tile"><div class="lb">'+l+'</div><div class="v '+(c||'')+'">'+v+'</div><div class="d">'+d+'</div></div>').join('');
-
 const yr=$('yrSel');
 yr.innerHTML='<option value="">All years</option>'+DATA.totals.years.slice().reverse().map(y=>'<option>'+y+'</option>').join('');
 yr.onchange=render;
 
-function sideTable(rows){
+function sideTable(rows, cum){
   if(!rows.length) return '<div class="empty">no trade — abstained or no price</div>';
   const dcell=d=>'<span class="dir '+(d>0?'L':'S')+'">'+(d>0?'LONG':'SHORT')+'</span>';
+  const tot=rows.reduce((a,t)=>a+t.pnl,0);
   return '<table><thead><tr><th>Asset</th><th>Dir</th><th>Entry</th><th>SL</th><th>TP</th><th>Exit</th><th>PnL</th></tr></thead><tbody>'+
     rows.map(t=>'<tr><td>'+esc(t.mkt)+'</td><td>'+dcell(t.dir)+'</td>'+
       '<td>'+px(t.entry)+'</td><td>'+px(t.sl)+'</td><td>'+px(t.tp)+'</td>'+
       '<td>'+px(t.exit)+' <span class="out '+t.out+'">'+t.out.toUpperCase()+'</span></td>'+
       '<td class="'+(t.pnl>=0?'up':'dn')+'">'+fmt(t.pnl,2)+'%</td></tr>').join('')+
-    '</tbody></table>';
+    '</tbody><tfoot>'+
+      '<tr class="wktot"><td colspan="6">Week total · '+rows.length+' trade'+(rows.length>1?'s':'')+' · '+money(tot*1000)+' / $100k</td>'+
+        '<td class="'+(tot>=0?'up':'dn')+'">'+fmt(tot,2)+'%</td></tr>'+
+      '<tr class="wkcum"><td colspan="6">Cumulative through this week</td>'+
+        '<td class="'+(cum>=0?'up':'dn')+'">'+fmt(cum,1)+'%</td></tr>'+
+    '</tfoot></table>';
 }
 
 function render(){
   const y=yr.value;
-  const weeks=DATA.weeks.filter(w=>!y||w.date.slice(0,4)===y);
-  $('cnt').textContent=weeks.length+' weeks shown'+(y?' ('+y+')':'');
-  $('weeks').innerHTML=weeks.map(w=>{
-    const net=w.fpnl+w.opnl, cls=net>=0?'pos':'neg';
+  // chronological pass to build the running cumulative, SCOPED to the selection
+  // (year-to-date when a year is picked; from inception when "All years")
+  const asc=DATA.weeks.filter(w=>!y||w.date.slice(0,4)===y).slice().reverse();
+  let fcum=0,ocum=0,ftot=0,otot=0,fn=0,on=0,fwin=0,owin=0;
+  asc.forEach(w=>{
+    const fp=w.f.reduce((a,t)=>a+t.pnl,0), op=w.o.reduce((a,t)=>a+t.pnl,0);
+    fcum+=fp; ocum+=op; w._fp=fp; w._op=op; w._fcum=fcum; w._ocum=ocum;
+    w.f.forEach(t=>{ftot+=t.pnl;fn++;if(t.pnl>0)fwin++;});
+    w.o.forEach(t=>{otot+=t.pnl;on++;if(t.pnl>0)owin++;});
+  });
+  const scope = y ? y : 'all years';
+  const pct=(a,b)=> b?(100*a/b).toFixed(1)+'%':'0.0%';
+  $('tiles').innerHTML=[
+    ['Forecast cumulative', fmt(ftot,1)+'%', ftot>=0?'up':'dn', money(ftot*1000)+' / $100k · '+fn+' trades · '+scope],
+    ['Official cumulative', fmt(otot,1)+'%', otot>=0?'up':'dn', money(otot*1000)+' / $100k · '+on+' trades · '+scope],
+    ['Forecast − Official', fmt(ftot-otot,1)+'%', (ftot-otot)>=0?'up':'dn', 'how much the prediction lags the report ('+scope+')'],
+    ['Forecast win rate', pct(fwin,fn),'', 'of '+fn+' trades · '+scope],
+    ['Official win rate', pct(owin,on),'', 'of '+on+' trades · '+scope],
+    ['Weeks', asc.length,'', scope],
+  ].map(([l,v,c,d])=>'<div class="tile"><div class="lb">'+l+'</div><div class="v '+(c||'')+'">'+v+'</div><div class="d">'+d+'</div></div>').join('');
+  $('cnt').textContent=asc.length+' weeks shown'+(y?' · cumulative is year-to-date within '+y
+    :' · cumulative from '+DATA.totals.years[0]);
+  // newest week on top, using the scoped running cumulative
+  $('weeks').innerHTML=asc.slice().reverse().map(w=>{
+    const net=w._fp+w._op, cls=net>=0?'pos':'neg';
     return '<div class="wk '+cls+'"><div class="wkhead '+cls+'">'+
       '<div class="wkdate">'+esc(w.date)+'<span>released '+esc(w.rel||'—')+'</span></div>'+
       '<div class="wksums">'+
-        '<span style="color:var(--fcast)"><span class="lab">Forecast</span> wk '+fmt(w.fpnl,2)+'% · <b>cum '+fmt(w.fcum,1)+'%</b></span>'+
-        '<span style="color:var(--off)"><span class="lab">Official</span> wk '+fmt(w.opnl,2)+'% · <b>cum '+fmt(w.ocum,1)+'%</b></span>'+
+        '<span style="color:var(--fcast)"><span class="lab">Forecast</span> wk '+fmt(w._fp,2)+'% · <b>cum '+fmt(w._fcum,1)+'%</b></span>'+
+        '<span style="color:var(--off)"><span class="lab">Official</span> wk '+fmt(w._op,2)+'% · <b>cum '+fmt(w._ocum,1)+'%</b></span>'+
       '</div></div>'+
       '<div class="wkgrid">'+
-        '<div class="side f"><h4>◀ FORECAST — predicted signal</h4>'+sideTable(w.f)+'</div>'+
-        '<div class="side o"><h4>OFFICIAL — report signal ▶</h4>'+sideTable(w.o)+'</div>'+
+        '<div class="side f"><h4>◀ FORECAST — predicted signal</h4>'+sideTable(w.f,w._fcum)+'</div>'+
+        '<div class="side o"><h4>OFFICIAL — report signal ▶</h4>'+sideTable(w.o,w._ocum)+'</div>'+
       '</div></div>';
   }).join('');
 }
