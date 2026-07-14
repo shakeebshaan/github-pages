@@ -94,7 +94,7 @@ if(up.length){
   el.innerHTML='<h2>📅 Upcoming releases — our forecast before the print</h2>'+
     '<div class="uprow h"><span>Report</span><span>Release for</span><span>Forecast</span><span>Change</span></div>'+
     up.map(r=>{var f=r.fc;return '<div class="uprow"><span>'+r.label.split(' — ')[0].split(' (')[0]+'</span>'+
-      '<span>'+f.next_date+'</span><span><b>'+fnum(f.forecast,r.unit)+'</b> '+esc(r.unit)+'</span>'+
+      '<span>'+f.next_date+'</span><span><b>'+fnum(f.forecast,r.unit)+'</b> '+r.unit+'</span>'+
       '<span>'+(f.yoy!=null?'YoY '+(f.yoy>=0?'+':'')+f.yoy+'%':(f.change_pct!=null?(f.change_pct>=0?'+':'')+f.change_pct+'%':'—'))+'</span></div>';}).join('')+
     '<div class="note" style="margin-top:8px">Trained on all released history, leading indicators aligned as-of each period end (no look-ahead). Bands + full accuracy per report below.</div>';
 }
